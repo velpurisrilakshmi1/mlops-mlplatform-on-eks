@@ -1,0 +1,351 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        
+            <script>function neighbourhoodHighlight(params) {
+  // console.log("in nieghbourhoodhighlight");
+  allNodes = nodes.get({ returnType: "Object" });
+  // originalNodes = JSON.parse(JSON.stringify(allNodes));
+  // if something is selected:
+  if (params.nodes.length > 0) {
+    highlightActive = true;
+    var i, j;
+    var selectedNode = params.nodes[0];
+    var degrees = 2;
+
+    // mark all nodes as hard to read.
+    for (let nodeId in allNodes) {
+      // nodeColors[nodeId] = allNodes[nodeId].color;
+      allNodes[nodeId].color = "rgba(200,200,200,0.5)";
+      if (allNodes[nodeId].hiddenLabel === undefined) {
+        allNodes[nodeId].hiddenLabel = allNodes[nodeId].label;
+        allNodes[nodeId].label = undefined;
+      }
+    }
+    var connectedNodes = network.getConnectedNodes(selectedNode);
+    var allConnectedNodes = [];
+
+    // get the second degree nodes
+    for (i = 1; i < degrees; i++) {
+      for (j = 0; j < connectedNodes.length; j++) {
+        allConnectedNodes = allConnectedNodes.concat(
+          network.getConnectedNodes(connectedNodes[j])
+        );
+      }
+    }
+
+    // all second degree nodes get a different color and their label back
+    for (i = 0; i < allConnectedNodes.length; i++) {
+      // allNodes[allConnectedNodes[i]].color = "pink";
+      allNodes[allConnectedNodes[i]].color = "rgba(150,150,150,0.75)";
+      if (allNodes[allConnectedNodes[i]].hiddenLabel !== undefined) {
+        allNodes[allConnectedNodes[i]].label =
+          allNodes[allConnectedNodes[i]].hiddenLabel;
+        allNodes[allConnectedNodes[i]].hiddenLabel = undefined;
+      }
+    }
+
+    // all first degree nodes get their own color and their label back
+    for (i = 0; i < connectedNodes.length; i++) {
+      // allNodes[connectedNodes[i]].color = undefined;
+      allNodes[connectedNodes[i]].color = nodeColors[connectedNodes[i]];
+      if (allNodes[connectedNodes[i]].hiddenLabel !== undefined) {
+        allNodes[connectedNodes[i]].label =
+          allNodes[connectedNodes[i]].hiddenLabel;
+        allNodes[connectedNodes[i]].hiddenLabel = undefined;
+      }
+    }
+
+    // the main node gets its own color and its label back.
+    // allNodes[selectedNode].color = undefined;
+    allNodes[selectedNode].color = nodeColors[selectedNode];
+    if (allNodes[selectedNode].hiddenLabel !== undefined) {
+      allNodes[selectedNode].label = allNodes[selectedNode].hiddenLabel;
+      allNodes[selectedNode].hiddenLabel = undefined;
+    }
+  } else if (highlightActive === true) {
+    // console.log("highlightActive was true");
+    // reset all nodes
+    for (let nodeId in allNodes) {
+      // allNodes[nodeId].color = "purple";
+      allNodes[nodeId].color = nodeColors[nodeId];
+      // delete allNodes[nodeId].color;
+      if (allNodes[nodeId].hiddenLabel !== undefined) {
+        allNodes[nodeId].label = allNodes[nodeId].hiddenLabel;
+        allNodes[nodeId].hiddenLabel = undefined;
+      }
+    }
+    highlightActive = false;
+  }
+
+  // transform the object into an array
+  var updateArray = [];
+  if (params.nodes.length > 0) {
+    for (let nodeId in allNodes) {
+      if (allNodes.hasOwnProperty(nodeId)) {
+        // console.log(allNodes[nodeId]);
+        updateArray.push(allNodes[nodeId]);
+      }
+    }
+    nodes.update(updateArray);
+  } else {
+    // console.log("Nothing was selected");
+    for (let nodeId in allNodes) {
+      if (allNodes.hasOwnProperty(nodeId)) {
+        // console.log(allNodes[nodeId]);
+        // allNodes[nodeId].color = {};
+        updateArray.push(allNodes[nodeId]);
+      }
+    }
+    nodes.update(updateArray);
+  }
+}
+
+function filterHighlight(params) {
+  allNodes = nodes.get({ returnType: "Object" });
+  // if something is selected:
+  if (params.nodes.length > 0) {
+    filterActive = true;
+    let selectedNodes = params.nodes;
+
+    // hiding all nodes and saving the label
+    for (let nodeId in allNodes) {
+      allNodes[nodeId].hidden = true;
+      if (allNodes[nodeId].savedLabel === undefined) {
+        allNodes[nodeId].savedLabel = allNodes[nodeId].label;
+        allNodes[nodeId].label = undefined;
+      }
+    }
+
+    for (let i=0; i < selectedNodes.length; i++) {
+      allNodes[selectedNodes[i]].hidden = false;
+      if (allNodes[selectedNodes[i]].savedLabel !== undefined) {
+        allNodes[selectedNodes[i]].label = allNodes[selectedNodes[i]].savedLabel;
+        allNodes[selectedNodes[i]].savedLabel = undefined;
+      }
+    }
+
+  } else if (filterActive === true) {
+    // reset all nodes
+    for (let nodeId in allNodes) {
+      allNodes[nodeId].hidden = false;
+      if (allNodes[nodeId].savedLabel !== undefined) {
+        allNodes[nodeId].label = allNodes[nodeId].savedLabel;
+        allNodes[nodeId].savedLabel = undefined;
+      }
+    }
+    filterActive = false;
+  }
+
+  // transform the object into an array
+  var updateArray = [];
+  if (params.nodes.length > 0) {
+    for (let nodeId in allNodes) {
+      if (allNodes.hasOwnProperty(nodeId)) {
+        updateArray.push(allNodes[nodeId]);
+      }
+    }
+    nodes.update(updateArray);
+  } else {
+    for (let nodeId in allNodes) {
+      if (allNodes.hasOwnProperty(nodeId)) {
+        updateArray.push(allNodes[nodeId]);
+      }
+    }
+    nodes.update(updateArray);
+  }
+}
+
+function selectNode(nodes) {
+  network.selectNodes(nodes);
+  neighbourhoodHighlight({ nodes: nodes });
+  return nodes;
+}
+
+function selectNodes(nodes) {
+  network.selectNodes(nodes);
+  filterHighlight({nodes: nodes});
+  return nodes;
+}
+
+function highlightFilter(filter) {
+  let selectedNodes = []
+  let selectedProp = filter['property']
+  if (filter['item'] === 'node') {
+    let allNodes = nodes.get({ returnType: "Object" });
+    for (let nodeId in allNodes) {
+      if (allNodes[nodeId][selectedProp] && filter['value'].includes((allNodes[nodeId][selectedProp]).toString())) {
+        selectedNodes.push(nodeId)
+      }
+    }
+  }
+  else if (filter['item'] === 'edge'){
+    let allEdges = edges.get({returnType: 'object'});
+    // check if the selected property exists for selected edge and select the nodes connected to the edge
+    for (let edge in allEdges) {
+      if (allEdges[edge][selectedProp] && filter['value'].includes((allEdges[edge][selectedProp]).toString())) {
+        selectedNodes.push(allEdges[edge]['from'])
+        selectedNodes.push(allEdges[edge]['to'])
+      }
+    }
+  }
+  selectNodes(selectedNodes)
+}</script>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/dist/vis-network.min.css" integrity="sha512-WgxfT5LWjfszlPHXRmBWHkV2eceiWTOBvrKCNbdgDYTHrT2AeLCGbF4sZlZw3UMN3WtL0tGUoIAKsu8mllg/XA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/vis-network.min.js" integrity="sha512-LnvoEWDFrqGHlHmDD2101OrLcbsfkrzoSpvtSQtxK3RMnRV0eOkhhBN2dXHKRrUU8p2DGRTk35n4O8nWSVe1mQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+            
+            
+            
+            
+            
+            
+
+        
+<center>
+<h1></h1>
+</center>
+
+<!-- <link rel="stylesheet" href="../node_modules/vis/dist/vis.min.css" type="text/css" />
+<script type="text/javascript" src="../node_modules/vis/dist/vis.js"> </script>-->
+        <link
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css"
+          rel="stylesheet"
+          integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6"
+          crossorigin="anonymous"
+        />
+        <script
+          src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.bundle.min.js"
+          integrity="sha384-JEW9xMcG8R+pH31jmWH6WWP0WintQrMb4s7ZOdauHnUtxwoG2vI5DkLtS3qm9Ekf"
+          crossorigin="anonymous"
+        ></script>
+
+
+        <center>
+          <h1></h1>
+        </center>
+        <style type="text/css">
+
+             #mynetwork {
+                 width: 100%;
+                 height: 100vh;
+                 background-color: #0d1117;
+                 border: 1px solid lightgray;
+                 position: relative;
+                 float: left;
+             }
+
+             
+
+             
+
+             
+        </style>
+    </head>
+
+
+    <body>
+        <div class="card" style="width: 100%">
+            
+            
+            <div id="mynetwork" class="card-body"></div>
+        </div>
+
+        
+        
+
+        <script type="text/javascript">
+
+              // initialize global variables.
+              var edges;
+              var nodes;
+              var allNodes;
+              var allEdges;
+              var nodeColors;
+              var originalNodes;
+              var network;
+              var container;
+              var options, data;
+              var filter = {
+                  item : '',
+                  property : '',
+                  value : []
+              };
+
+              
+
+              
+
+              // This method is responsible for drawing the graph, returns the drawn network
+              function drawGraph() {
+                  var container = document.getElementById('mynetwork');
+
+                  
+
+                  // parsing and collecting nodes and edges from the python
+                  nodes = new vis.DataSet([{"font": {"color": "#c9d1d9"}, "group": "aws-infra", "id": "vpc", "label": "VPC", "shape": "dot", "size": 25, "title": "\u003cb\u003eVPC\u003c/b\u003e\u003cbr\u003e10.0.0.0/16 \u2014 VPC boundary\u003cbr\u003e\u003ci\u003eGroup: aws-infra\u003c/i\u003e"}, {"font": {"color": "#c9d1d9"}, "group": "aws-infra", "id": "pub_subnet", "label": "Public\nSubnets", "shape": "dot", "size": 18, "title": "\u003cb\u003ePublic Subnets\u003c/b\u003e\u003cbr\u003e3 \u00d7 public subnets (one per AZ)\u003cbr\u003e\u003ci\u003eGroup: aws-infra\u003c/i\u003e"}, {"font": {"color": "#c9d1d9"}, "group": "aws-infra", "id": "priv_subnet", "label": "Private\nSubnets", "shape": "dot", "size": 18, "title": "\u003cb\u003ePrivate Subnets\u003c/b\u003e\u003cbr\u003e3 \u00d7 private subnets for EKS nodes\u003cbr\u003e\u003ci\u003eGroup: aws-infra\u003c/i\u003e"}, {"font": {"color": "#c9d1d9"}, "group": "aws-infra", "id": "db_subnet", "label": "DB Subnets", "shape": "dot", "size": 14, "title": "\u003cb\u003eDB Subnets\u003c/b\u003e\u003cbr\u003eIsolated subnets for RDS\u003cbr\u003e\u003ci\u003eGroup: aws-infra\u003c/i\u003e"}, {"font": {"color": "#c9d1d9"}, "group": "aws-infra", "id": "igw", "label": "IGW", "shape": "dot", "size": 14, "title": "\u003cb\u003eIGW\u003c/b\u003e\u003cbr\u003eInternet Gateway\u003cbr\u003e\u003ci\u003eGroup: aws-infra\u003c/i\u003e"}, {"font": {"color": "#c9d1d9"}, "group": "aws-infra", "id": "nat_gw", "label": "NAT GW", "shape": "dot", "size": 16, "title": "\u003cb\u003eNAT GW\u003c/b\u003e\u003cbr\u003eNAT Gateway (AZ1) \u2014 egress for nodes\u003cbr\u003e\u003ci\u003eGroup: aws-infra\u003c/i\u003e"}, {"font": {"color": "#c9d1d9"}, "group": "aws-infra", "id": "route53", "label": "Route 53", "shape": "dot", "size": 20, "title": "\u003cb\u003eRoute 53\u003c/b\u003e\u003cbr\u003eHosted zone \u2192 maps domain to ALB IPs\u003cbr\u003e\u003ci\u003eGroup: aws-infra\u003c/i\u003e"}, {"font": {"color": "#c9d1d9"}, "group": "aws-infra", "id": "acm", "label": "ACM\nCert", "shape": "dot", "size": 14, "title": "\u003cb\u003eACM Cert\u003c/b\u003e\u003cbr\u003eTLS certificate for *.domain\u003cbr\u003e\u003ci\u003eGroup: aws-infra\u003c/i\u003e"}, {"font": {"color": "#c9d1d9"}, "group": "aws-compute", "id": "alb", "label": "ALB", "shape": "dot", "size": 30, "title": "\u003cb\u003eALB\u003c/b\u003e\u003cbr\u003eApplication Load Balancer \u2014 path routing\u003cbr\u003e\u003ci\u003eGroup: aws-compute\u003c/i\u003e"}, {"font": {"color": "#c9d1d9"}, "group": "aws-compute", "id": "eks", "label": "EKS\nCluster", "shape": "dot", "size": 35, "title": "\u003cb\u003eEKS Cluster\u003c/b\u003e\u003cbr\u003eEKS 1.24, private endpoint\u003cbr\u003e\u003ci\u003eGroup: aws-compute\u003c/i\u003e"}, {"font": {"color": "#c9d1d9"}, "group": "aws-compute", "id": "ng0", "label": "ng0\nt3.small", "shape": "dot", "size": 16, "title": "\u003cb\u003eng0 t3.small\u003c/b\u003e\u003cbr\u003e0\u20135 nodes, spillover workloads\u003cbr\u003e\u003ci\u003eGroup: aws-compute\u003c/i\u003e"}, {"font": {"color": "#c9d1d9"}, "group": "aws-compute", "id": "ng1", "label": "ng1\nt3.medium", "shape": "dot", "size": 20, "title": "\u003cb\u003eng1 t3.medium\u003c/b\u003e\u003cbr\u003e4\u20136 nodes, base platform (always on)\u003cbr\u003e\u003ci\u003eGroup: aws-compute\u003c/i\u003e"}, {"font": {"color": "#c9d1d9"}, "group": "aws-compute", "id": "ng2", "label": "ng2\nt3.large", "shape": "dot", "size": 16, "title": "\u003cb\u003eng2 t3.large\u003c/b\u003e\u003cbr\u003e0\u20133 nodes, NoSchedule, heavy ML only\u003cbr\u003e\u003ci\u003eGroup: aws-compute\u003c/i\u003e"}, {"font": {"color": "#c9d1d9"}, "group": "aws-compute", "id": "efs", "label": "EFS", "shape": "dot", "size": 18, "title": "\u003cb\u003eEFS\u003c/b\u003e\u003cbr\u003eReadWriteMany \u2014 notebooks, DAG logs\u003cbr\u003e\u003ci\u003eGroup: aws-compute\u003c/i\u003e"}, {"font": {"color": "#c9d1d9"}, "group": "aws-data", "id": "s3_mlflow", "label": "S3\nArtifacts", "shape": "dot", "size": 22, "title": "\u003cb\u003eS3 Artifacts\u003c/b\u003e\u003cbr\u003eMLflow model artifacts\u003cbr\u003e\u003ci\u003eGroup: aws-data\u003c/i\u003e"}, {"font": {"color": "#c9d1d9"}, "group": "aws-data", "id": "s3_airflow", "label": "S3\nData", "shape": "dot", "size": 22, "title": "\u003cb\u003eS3 Data\u003c/b\u003e\u003cbr\u003eAirflow pipeline data / I/O\u003cbr\u003e\u003ci\u003eGroup: aws-data\u003c/i\u003e"}, {"font": {"color": "#c9d1d9"}, "group": "aws-data", "id": "rds_pg", "label": "RDS\nPostgreSQL", "shape": "dot", "size": 24, "title": "\u003cb\u003eRDS PostgreSQL\u003c/b\u003e\u003cbr\u003eAirflow metadata DB, port 5000\u003cbr\u003e\u003ci\u003eGroup: aws-data\u003c/i\u003e"}, {"font": {"color": "#c9d1d9"}, "group": "aws-data", "id": "rds_mysql", "label": "RDS\nMySQL", "shape": "dot", "size": 24, "title": "\u003cb\u003eRDS MySQL\u003c/b\u003e\u003cbr\u003eMLflow backend store, port 5432\u003cbr\u003e\u003ci\u003eGroup: aws-data\u003c/i\u003e"}, {"font": {"color": "#c9d1d9"}, "group": "aws-data", "id": "secrets_mgr", "label": "Secrets\nManager", "shape": "dot", "size": 20, "title": "\u003cb\u003eSecrets Manager\u003c/b\u003e\u003cbr\u003emlplatform/* all platform secrets\u003cbr\u003e\u003ci\u003eGroup: aws-data\u003c/i\u003e"}, {"font": {"color": "#c9d1d9"}, "group": "aws-data", "id": "ecr", "label": "ECR", "shape": "dot", "size": 18, "title": "\u003cb\u003eECR\u003c/b\u003e\u003cbr\u003emlflow-sagemaker-deployment images\u003cbr\u003e\u003ci\u003eGroup: aws-data\u003c/i\u003e"}, {"font": {"color": "#c9d1d9"}, "group": "aws-identity", "id": "oidc", "label": "OIDC\nProvider", "shape": "dot", "size": 20, "title": "\u003cb\u003eOIDC Provider\u003c/b\u003e\u003cbr\u003eEKS OIDC \u2192 enables IRSA\u003cbr\u003e\u003ci\u003eGroup: aws-identity\u003c/i\u003e"}, {"font": {"color": "#c9d1d9"}, "group": "aws-identity", "id": "iam_mlflow", "label": "IRSA\nMLflow", "shape": "dot", "size": 14, "title": "\u003cb\u003eIRSA MLflow\u003c/b\u003e\u003cbr\u003eS3 read/write on mlflow prefix\u003cbr\u003e\u003ci\u003eGroup: aws-identity\u003c/i\u003e"}, {"font": {"color": "#c9d1d9"}, "group": "aws-identity", "id": "iam_airflow", "label": "IRSA\nAirflow", "shape": "dot", "size": 14, "title": "\u003cb\u003eIRSA Airflow\u003c/b\u003e\u003cbr\u003eS3 read/write on airflow prefix\u003cbr\u003e\u003ci\u003eGroup: aws-identity\u003c/i\u003e"}, {"font": {"color": "#c9d1d9"}, "group": "aws-identity", "id": "iam_sage", "label": "IRSA\nSageMaker", "shape": "dot", "size": 14, "title": "\u003cb\u003eIRSA SageMaker\u003c/b\u003e\u003cbr\u003eSageMaker + ECR + S3 access\u003cbr\u003e\u003ci\u003eGroup: aws-identity\u003c/i\u003e"}, {"font": {"color": "#c9d1d9"}, "group": "aws-identity", "id": "iam_eso", "label": "IRSA\nESO", "shape": "dot", "size": 14, "title": "\u003cb\u003eIRSA ESO\u003c/b\u003e\u003cbr\u003eSecrets Manager:GetSecretValue\u003cbr\u003e\u003ci\u003eGroup: aws-identity\u003c/i\u003e"}, {"font": {"color": "#c9d1d9"}, "group": "aws-identity", "id": "iam_extdns", "label": "IRSA\nExtDNS", "shape": "dot", "size": 14, "title": "\u003cb\u003eIRSA ExtDNS\u003c/b\u003e\u003cbr\u003eRoute53:ChangeResourceRecordSets\u003cbr\u003e\u003ci\u003eGroup: aws-identity\u003c/i\u003e"}, {"font": {"color": "#c9d1d9"}, "group": "aws-identity", "id": "iam_users", "label": "User IAM\nRoles", "shape": "dot", "size": 18, "title": "\u003cb\u003eUser IAM Roles\u003c/b\u003e\u003cbr\u003ePer-user developer or user role\u003cbr\u003e\u003ci\u003eGroup: aws-identity\u003c/i\u003e"}, {"font": {"color": "#c9d1d9"}, "group": "external", "id": "github", "label": "GitHub\n(OAuth)", "shape": "dot", "size": 22, "title": "\u003cb\u003eGitHub (OAuth)\u003c/b\u003e\u003cbr\u003eOAuth2 provider for all platform UIs\u003cbr\u003e\u003ci\u003eGroup: external\u003c/i\u003e"}, {"font": {"color": "#c9d1d9"}, "group": "external", "id": "git_repo", "label": "DAG Git\nRepo", "shape": "dot", "size": 16, "title": "\u003cb\u003eDAG Git Repo\u003c/b\u003e\u003cbr\u003eAirflow DAG repository (git-sync source)\u003cbr\u003e\u003ci\u003eGroup: external\u003c/i\u003e"}, {"font": {"color": "#c9d1d9"}, "group": "tf-backend", "id": "tf_s3", "label": "TF State\n(S3)", "shape": "dot", "size": 16, "title": "\u003cb\u003eTF State (S3)\u003c/b\u003e\u003cbr\u003eS3: mlplatform-terraform-state\u003cbr\u003e\u003ci\u003eGroup: tf-backend\u003c/i\u003e"}, {"font": {"color": "#c9d1d9"}, "group": "tf-backend", "id": "tf_ddb", "label": "TF Lock\n(DDB)", "shape": "dot", "size": 14, "title": "\u003cb\u003eTF Lock (DDB)\u003c/b\u003e\u003cbr\u003eDynamoDB: mlplatform-terraform-locks\u003cbr\u003e\u003ci\u003eGroup: tf-backend\u003c/i\u003e"}, {"font": {"color": "#c9d1d9"}, "group": "kube-system", "id": "alb_ctrl", "label": "ALB\nController", "shape": "dot", "size": 18, "title": "\u003cb\u003eALB Controller\u003c/b\u003e\u003cbr\u003eProvisions ALB from Ingress resources\u003cbr\u003e\u003ci\u003eGroup: kube-system\u003c/i\u003e"}, {"font": {"color": "#c9d1d9"}, "group": "kube-system", "id": "ext_dns", "label": "ExternalDNS", "shape": "dot", "size": 18, "title": "\u003cb\u003eExternalDNS\u003c/b\u003e\u003cbr\u003eSyncs Ingress hostnames \u2192 Route53\u003cbr\u003e\u003ci\u003eGroup: kube-system\u003c/i\u003e"}, {"font": {"color": "#c9d1d9"}, "group": "kube-system", "id": "ca", "label": "Cluster\nAutoscaler", "shape": "dot", "size": 18, "title": "\u003cb\u003eCluster Autoscaler\u003c/b\u003e\u003cbr\u003eScales node groups on pending pods\u003cbr\u003e\u003ci\u003eGroup: kube-system\u003c/i\u003e"}, {"font": {"color": "#c9d1d9"}, "group": "external-secrets", "id": "eso", "label": "Ext. Secrets\nOperator", "shape": "dot", "size": 20, "title": "\u003cb\u003eExt. Secrets Operator\u003c/b\u003e\u003cbr\u003eSyncs AWS Secrets Manager \u2192 K8s Secrets\u003cbr\u003e\u003ci\u003eGroup: external-secrets\u003c/i\u003e"}, {"font": {"color": "#c9d1d9"}, "group": "airflow", "id": "airflow_web", "label": "Airflow\nWebserver", "shape": "dot", "size": 26, "title": "\u003cb\u003eAirflow Webserver\u003c/b\u003e\u003cbr\u003eAirflow UI + REST API, port 8080\u003cbr\u003e\u003ci\u003eGroup: airflow\u003c/i\u003e"}, {"font": {"color": "#c9d1d9"}, "group": "airflow", "id": "airflow_sch", "label": "Airflow\nScheduler", "shape": "dot", "size": 22, "title": "\u003cb\u003eAirflow Scheduler\u003c/b\u003e\u003cbr\u003eDAG parsing + KubernetesExecutor\u003cbr\u003e\u003ci\u003eGroup: airflow\u003c/i\u003e"}, {"font": {"color": "#c9d1d9"}, "group": "airflow", "id": "airflow_gitsync", "label": "git-sync\nsidecar", "shape": "dot", "size": 14, "title": "\u003cb\u003egit-sync sidecar\u003c/b\u003e\u003cbr\u003ePulls DAGs from GitHub every 60s\u003cbr\u003e\u003ci\u003eGroup: airflow\u003c/i\u003e"}, {"font": {"color": "#c9d1d9"}, "group": "mlflow", "id": "mlflow_svc", "label": "MLflow\nServer", "shape": "dot", "size": 26, "title": "\u003cb\u003eMLflow Server\u003c/b\u003e\u003cbr\u003eExperiment tracking + Model Registry\u003cbr\u003e\u003ci\u003eGroup: mlflow\u003c/i\u003e"}, {"font": {"color": "#c9d1d9"}, "group": "mlflow", "id": "mlflow_proxy", "label": "OAuth\nProxy", "shape": "dot", "size": 14, "title": "\u003cb\u003eOAuth Proxy\u003c/b\u003e\u003cbr\u003eAuthenticates MLflow requests via GitHub OAuth\u003cbr\u003e\u003ci\u003eGroup: mlflow\u003c/i\u003e"}, {"font": {"color": "#c9d1d9"}, "group": "jupyterhub", "id": "jh_hub", "label": "JupyterHub\nHub", "shape": "dot", "size": 26, "title": "\u003cb\u003eJupyterHub Hub\u003c/b\u003e\u003cbr\u003eSpawns single-user notebook servers\u003cbr\u003e\u003ci\u003eGroup: jupyterhub\u003c/i\u003e"}, {"font": {"color": "#c9d1d9"}, "group": "jupyterhub", "id": "jh_proxy", "label": "JH\nProxy", "shape": "dot", "size": 18, "title": "\u003cb\u003eJH Proxy\u003c/b\u003e\u003cbr\u003eRoutes traffic to user servers\u003cbr\u003e\u003ci\u003eGroup: jupyterhub\u003c/i\u003e"}, {"font": {"color": "#c9d1d9"}, "group": "jupyterhub", "id": "jh_user", "label": "User\nNotebook", "shape": "dot", "size": 16, "title": "\u003cb\u003eUser Notebook\u003c/b\u003e\u003cbr\u003ejupyter-\u003cusername\u003e pod, EFS-mounted\u003cbr\u003e\u003ci\u003eGroup: jupyterhub\u003c/i\u003e"}, {"font": {"color": "#c9d1d9"}, "group": "monitoring", "id": "prometheus", "label": "Prometheus", "shape": "dot", "size": 26, "title": "\u003cb\u003ePrometheus\u003c/b\u003e\u003cbr\u003eScrapes all /metrics endpoints\u003cbr\u003e\u003ci\u003eGroup: monitoring\u003c/i\u003e"}, {"font": {"color": "#c9d1d9"}, "group": "monitoring", "id": "grafana", "label": "Grafana", "shape": "dot", "size": 26, "title": "\u003cb\u003eGrafana\u003c/b\u003e\u003cbr\u003eDashboards (IDs 2, 315, 6417)\u003cbr\u003e\u003ci\u003eGroup: monitoring\u003c/i\u003e"}, {"font": {"color": "#c9d1d9"}, "group": "sagemaker", "id": "sage_dash", "label": "Streamlit\nDashboard", "shape": "dot", "size": 22, "title": "\u003cb\u003eStreamlit Dashboard\u003c/b\u003e\u003cbr\u003eSageMaker endpoint manager UI\u003cbr\u003e\u003ci\u003eGroup: sagemaker\u003c/i\u003e"}]);
+                  edges = new vis.DataSet([{"arrows": "to", "from": "igw", "label": "routes", "title": "routes", "to": "alb"}, {"arrows": "to", "from": "acm", "label": "TLS cert", "title": "TLS cert", "to": "alb"}, {"arrows": "to", "from": "alb", "label": "DNS A record", "title": "DNS A record", "to": "route53"}, {"arrows": "to", "from": "ext_dns", "label": "upserts records", "title": "upserts records", "to": "route53"}, {"arrows": "to", "from": "alb_ctrl", "label": "provisions", "title": "provisions", "to": "alb"}, {"arrows": "to", "from": "alb", "label": "/airflow", "title": "/airflow", "to": "airflow_web"}, {"arrows": "to", "from": "alb", "label": "/mlflow", "title": "/mlflow", "to": "mlflow_proxy"}, {"arrows": "to", "from": "alb", "label": "/jupyterhub", "title": "/jupyterhub", "to": "jh_proxy"}, {"arrows": "to", "from": "alb", "label": "/grafana", "title": "/grafana", "to": "grafana"}, {"arrows": "to", "from": "alb", "label": "/sagemaker", "title": "/sagemaker", "to": "sage_dash"}, {"arrows": "to", "from": "github", "label": "OAuth", "title": "OAuth", "to": "airflow_web"}, {"arrows": "to", "from": "github", "label": "OAuth", "title": "OAuth", "to": "jh_hub"}, {"arrows": "to", "from": "github", "label": "OAuth", "title": "OAuth", "to": "grafana"}, {"arrows": "to", "from": "github", "label": "OAuth", "title": "OAuth", "to": "mlflow_proxy"}, {"arrows": "to", "from": "github", "label": "OAuth", "title": "OAuth", "to": "sage_dash"}, {"arrows": "to", "from": "eks", "label": "manages", "title": "manages", "to": "ng0"}, {"arrows": "to", "from": "eks", "label": "manages", "title": "manages", "to": "ng1"}, {"arrows": "to", "from": "eks", "label": "manages", "title": "manages", "to": "ng2"}, {"arrows": "to", "from": "ca", "label": "autoscales", "title": "autoscales", "to": "ng0"}, {"arrows": "to", "from": "ca", "label": "autoscales", "title": "autoscales", "to": "ng1"}, {"arrows": "to", "from": "ca", "label": "autoscales", "title": "autoscales", "to": "ng2"}, {"arrows": "to", "from": "oidc", "label": "assumes", "title": "assumes", "to": "iam_mlflow"}, {"arrows": "to", "from": "oidc", "label": "assumes", "title": "assumes", "to": "iam_airflow"}, {"arrows": "to", "from": "oidc", "label": "assumes", "title": "assumes", "to": "iam_sage"}, {"arrows": "to", "from": "oidc", "label": "assumes", "title": "assumes", "to": "iam_eso"}, {"arrows": "to", "from": "oidc", "label": "assumes", "title": "assumes", "to": "iam_extdns"}, {"arrows": "to", "from": "eks", "label": "issues tokens", "title": "issues tokens", "to": "oidc"}, {"arrows": "to", "from": "ext_dns", "label": "IRSA", "title": "IRSA", "to": "iam_extdns"}, {"arrows": "to", "from": "airflow_gitsync", "label": "git pull", "title": "git pull", "to": "git_repo"}, {"arrows": "to", "from": "airflow_sch", "label": "side-car", "title": "side-car", "to": "airflow_gitsync"}, {"arrows": "to;from", "from": "airflow_sch", "label": "JDBC metadata", "title": "JDBC metadata", "to": "rds_pg"}, {"arrows": "to", "from": "airflow_sch", "label": "spawns task pods", "title": "spawns task pods", "to": "ng1"}, {"arrows": "to;from", "from": "airflow_sch", "label": "S3 API", "title": "S3 API", "to": "s3_airflow"}, {"arrows": "to", "from": "airflow_sch", "label": "tracking API", "title": "tracking API", "to": "mlflow_svc"}, {"arrows": "to;from", "from": "airflow_web", "label": "RPC/REST", "title": "RPC/REST", "to": "airflow_sch"}, {"arrows": "to", "from": "airflow_sch", "label": "IRSA", "title": "IRSA", "to": "iam_airflow"}, {"arrows": "to;from", "from": "mlflow_svc", "label": "JDBC backend", "title": "JDBC backend", "to": "rds_mysql"}, {"arrows": "to;from", "from": "mlflow_svc", "label": "S3 artifact store", "title": "S3 artifact store", "to": "s3_mlflow"}, {"arrows": "to", "from": "mlflow_svc", "label": "IRSA", "title": "IRSA", "to": "iam_mlflow"}, {"arrows": "to", "from": "mlflow_proxy", "label": "proxy", "title": "proxy", "to": "mlflow_svc"}, {"arrows": "to;from", "from": "jh_proxy", "label": "proxy", "title": "proxy", "to": "jh_hub"}, {"arrows": "to", "from": "jh_hub", "label": "spawns", "title": "spawns", "to": "jh_user"}, {"arrows": "to;from", "from": "jh_user", "label": "ReadWriteMany", "title": "ReadWriteMany", "to": "efs"}, {"arrows": "to", "from": "jh_user", "label": "tracking API", "title": "tracking API", "to": "mlflow_svc"}, {"arrows": "to", "from": "prometheus", "label": "scrape /metrics", "title": "scrape /metrics", "to": "airflow_web"}, {"arrows": "to", "from": "prometheus", "label": "scrape /metrics", "title": "scrape /metrics", "to": "mlflow_svc"}, {"arrows": "to", "from": "prometheus", "label": "scrape /metrics", "title": "scrape /metrics", "to": "jh_hub"}, {"arrows": "to", "from": "prometheus", "label": "node-exporter", "title": "node-exporter", "to": "ng0"}, {"arrows": "to", "from": "prometheus", "label": "node-exporter", "title": "node-exporter", "to": "ng1"}, {"arrows": "to", "from": "grafana", "label": "PromQL queries", "title": "PromQL queries", "to": "prometheus"}, {"arrows": "to", "from": "eso", "label": "GetSecretValue", "title": "GetSecretValue", "to": "secrets_mgr"}, {"arrows": "to", "from": "eso", "label": "IRSA", "title": "IRSA", "to": "iam_eso"}, {"arrows": "to", "from": "eso", "label": "injects secrets", "title": "injects secrets", "to": "airflow_web"}, {"arrows": "to", "from": "eso", "label": "injects secrets", "title": "injects secrets", "to": "mlflow_svc"}, {"arrows": "to", "from": "eso", "label": "injects secrets", "title": "injects secrets", "to": "jh_hub"}, {"arrows": "to;from", "from": "sage_dash", "label": "push/pull images", "title": "push/pull images", "to": "ecr"}, {"arrows": "to", "from": "sage_dash", "label": "IRSA", "title": "IRSA", "to": "iam_sage"}, {"arrows": "to", "from": "sage_dash", "label": "reads artifacts", "title": "reads artifacts", "to": "s3_mlflow"}, {"arrows": "to", "from": "vpc", "label": "contains", "title": "contains", "to": "pub_subnet"}, {"arrows": "to", "from": "vpc", "label": "contains", "title": "contains", "to": "priv_subnet"}, {"arrows": "to", "from": "vpc", "label": "contains", "title": "contains", "to": "db_subnet"}, {"arrows": "to", "from": "nat_gw", "label": "NAT egress", "title": "NAT egress", "to": "priv_subnet"}, {"arrows": "to", "from": "efs", "label": "Mount Targets", "title": "Mount Targets", "to": "priv_subnet"}, {"arrows": "to", "from": "rds_pg", "label": "runs in", "title": "runs in", "to": "db_subnet"}, {"arrows": "to", "from": "rds_mysql", "label": "runs in", "title": "runs in", "to": "db_subnet"}, {"arrows": "to", "from": "tf_ddb", "label": "locks", "title": "locks", "to": "tf_s3"}, {"arrows": "to", "from": "iam_users", "label": "kubectl access", "title": "kubectl access", "to": "eks"}, {"arrows": "to", "from": "iam_users", "label": "S3 access", "title": "S3 access", "to": "s3_mlflow"}]);
+
+                  nodeColors = {};
+                  allNodes = nodes.get({ returnType: "Object" });
+                  for (nodeId in allNodes) {
+                    nodeColors[nodeId] = allNodes[nodeId].color;
+                  }
+                  allEdges = edges.get({ returnType: "Object" });
+                  // adding nodes and edges to the graph
+                  data = {nodes: nodes, edges: edges};
+
+                  var options = {"nodes": {"font": {"size": 11, "face": "Inter,Arial,sans-serif"}, "borderWidth": 2, "borderWidthSelected": 4, "shadow": {"enabled": true, "size": 6, "x": 3, "y": 3}}, "edges": {"arrows": {"to": {"enabled": true, "scaleFactor": 0.6}}, "color": {"color": "rgba(120,120,140,0.5)", "highlight": "#58a6ff"}, "font": {"size": 9, "face": "Inter,Arial,sans-serif", "color": "rgba(180,180,200,0.75)", "strokeWidth": 0}, "smooth": {"type": "curvedCW", "roundness": 0.15}, "width": 1.2, "selectionWidth": 2.5}, "physics": {"enabled": true, "barnesHut": {"gravitationalConstant": -8000, "centralGravity": 0.3, "springLength": 160, "springConstant": 0.04, "damping": 0.09, "avoidOverlap": 0.5}, "stabilization": {"iterations": 200}}, "interaction": {"hover": true, "tooltipDelay": 150, "navigationButtons": true, "keyboard": true, "multiselect": true}};
+
+                  
+
+
+                  
+
+                  network = new vis.Network(container, data, options);
+
+                  
+
+                  
+
+                  
+
+
+                  
+
+                  return network;
+
+              }
+              drawGraph();
+        </script>
+    
+<style>
+  #legend {
+    position: fixed; top: 12px; left: 12px; z-index: 9999;
+    background: rgba(22,27,34,0.93); border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px; padding: 10px 14px; font-family: Inter, Arial, sans-serif;
+    font-size: 12px; color: #c9d1d9; max-width: 200px; line-height: 1.8;
+  }
+  #legend h4 { margin: 0 0 6px; font-size: 13px; color: #58a6ff; }
+  .leg-dot { display: inline-block; width:12px; height:12px;
+             border-radius:50%; margin-right:6px; vertical-align:middle; }
+</style>
+<div id="legend">
+  <h4>Namespace / Layer</h4>
+  <div><span class="leg-dot" style="background:#2196F3"></span>AWS Infrastructure</div>
+  <div><span class="leg-dot" style="background:#4CAF50"></span>AWS Compute</div>
+  <div><span class="leg-dot" style="background:#F44336"></span>AWS Data Stores</div>
+  <div><span class="leg-dot" style="background:#607D8B"></span>Identity (IAM / IRSA)</div>
+  <div><span class="leg-dot" style="background:#FF9800"></span>airflow</div>
+  <div><span class="leg-dot" style="background:#9C27B0"></span>mlflow</div>
+  <div><span class="leg-dot" style="background:#00BCD4"></span>jupyterhub</div>
+  <div><span class="leg-dot" style="background:#E91E63"></span>monitoring</div>
+  <div><span class="leg-dot" style="background:#8BC34A"></span>sagemaker</div>
+  <div><span class="leg-dot" style="background:#795548"></span>kube-system</div>
+  <div><span class="leg-dot" style="background:#FF5722"></span>external-secrets</div>
+  <div><span class="leg-dot" style="background:#9E9E9E"></span>External Services</div>
+  <div><span class="leg-dot" style="background:#FFEB3B"></span>Terraform Backend</div>
+  <br>
+  <small>Drag nodes | Scroll to zoom | Click to highlight | ⌘/Ctrl+click multi-select</small>
+</div>
+</body>
+</html>

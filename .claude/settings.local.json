@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python wiki/visualization/scenario_viz.py)"
+    ]
+  }
+}

@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MLOps Platform on EKS — Architecture Diagrams</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    background: #0d1117;
+    color: #c9d1d9;
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  header {
+    padding: 20px 32px 14px;
+    border-bottom: 1px solid #21262d;
+  }
+  header h1 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #e6edf3;
+  }
+  header p {
+    font-size: 13px;
+    color: #8b949e;
+    margin-top: 4px;
+  }
+
+  /* ── Tabs ── */
+  nav.tabs {
+    display: flex;
+    gap: 0;
+    padding: 0 32px;
+    border-bottom: 1px solid #21262d;
+    overflow-x: auto;
+  }
+  .tab-btn {
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: #8b949e;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 13px;
+    padding: 11px 16px;
+    white-space: nowrap;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .tab-btn:hover { color: #c9d1d9; }
+  .tab-btn.active {
+    color: #58a6ff;
+    border-bottom-color: #58a6ff;
+    font-weight: 500;
+  }
+
+  /* ── Content ── */
+  main { padding: 28px 32px; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .panel h2 {
+    font-size: 17px;
+    font-weight: 600;
+    color: #e6edf3;
+    margin-bottom: 6px;
+  }
+  .subtitle {
+    font-size: 13px;
+    color: #8b949e;
+    line-height: 1.55;
+    max-width: 820px;
+    margin-bottom: 22px;
+  }
+
+  /* ── Diagram box ── */
+  .diagram-box {
+    background: #161b22;
+    border: 1px solid #21262d;
+    border-radius: 8px;
+    padding: 36px 32px;
+    overflow: auto;
+    min-height: 360px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+  }
+  .diagram-box svg {
+    max-width: 100%;
+    height: auto;
+  }
+  .mermaid { display: none; }  /* hide raw text */
+
+  /* ── Error state ── */
+  .diagram-error {
+    color: #f85149;
+    font-size: 13px;
+    font-family: "SF Mono", Consolas, monospace;
+    white-space: pre-wrap;
+    padding: 12px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>MLOps Platform on EKS — Architecture Diagrams</h1>
+  <p>7 focused diagrams covering platform topology, workflows, and operational flows. Click a tab to switch.</p>
+</header>
+
+<nav class="tabs">
+    <button class="tab-btn active" id="btn-overview" onclick="showTab('overview')">Platform Overview</button>
+    <button class="tab-btn" id="btn-training" onclick="showTab('training')">ML Training Pipeline</button>
+    <button class="tab-btn" id="btn-deployment" onclick="showTab('deployment')">Model Deployment</button>
+    <button class="tab-btn" id="btn-notebook" onclick="showTab('notebook')">Notebook Session</button>
+    <button class="tab-btn" id="btn-observability" onclick="showTab('observability')">Observability</button>
+    <button class="tab-btn" id="btn-secrets" onclick="showTab('secrets')">Secret Management</button>
+    <button class="tab-btn" id="btn-network" onclick="showTab('network')">Network & Identity</button>
+</nav>
+
+<main>
+  <div class="panel active" id="panel-overview">
+    <h2>Platform Services Map</h2>
+    <p class="subtitle">All platform services, their public access paths, backing data stores, and key data flows — the complete picture on one page.</p>
+    <div class="diagram-box">
+      <pre class="mermaid" id="mermaid-overview">flowchart TD
+    User([&quot;User / Data Scientist&quot;])
+
+    subgraph edge [&quot; AWS Edge &quot;]
+        R53[&quot;Route 53  |  DNS&quot;]
+        ACM[&quot;ACM Certificate  |  TLS&quot;]
+        ALB[&quot;Application Load Balancer
+Path-based routing to all apps&quot;]
+        GH[&quot;GitHub OAuth
+SSO for every platform UI&quot;]
+    end
+
+    subgraph eks [&quot; EKS Cluster 1.24  —  Private API Endpoint &quot;]
+        subgraph apps [&quot; Platform Applications &quot;]
+            AF[&quot;Airflow 2.6.3
+Workflow orchestration&quot;]
+            ML[&quot;MLflow 2.4.1
+Experiment tracking + Model Registry&quot;]
+            JH[&quot;JupyterHub 2.0
+Managed notebook environment&quot;]
+            GF[&quot;Grafana 9.5.5
+Dashboards and alerting&quot;]
+            SD[&quot;SageMaker Dashboard
+Model deployment UI&quot;]
+        end
+        subgraph ops [&quot; Cluster Operators &quot;]
+            PROM[&quot;Prometheus
+Metrics store  15-day retention&quot;]
+            ESO[&quot;External Secrets Operator
+AWS Secrets Manager sync&quot;]
+            CA[&quot;Cluster Autoscaler
+Node group scaling&quot;]
+        end
+        subgraph ngs [&quot; Node Groups &quot;]
+            ng0[&quot;ng0  t3.small  0-5 nodes
+Spillover&quot;]
+            ng1[&quot;ng1  t3.medium  4-6 nodes
+Base platform — always on&quot;]
+            ng2[&quot;ng2  t3.large  0-3 nodes
+Heavy ML — NoSchedule taint&quot;]
+        end
+    end
+
+    subgraph storage [&quot; AWS Storage &amp; Data &quot;]
+        S3[&quot;S3
+mlflow-artifacts  |  airflow-data&quot;]
+        RDS[&quot;RDS
+PostgreSQL — Airflow metadata
+MySQL — MLflow backend&quot;]
+        EFS[&quot;EFS  |  ReadWriteMany
+Persistent notebook storage&quot;]
+        ECR[&quot;ECR
+Container image registry&quot;]
+        SEC[&quot;Secrets Manager
+mlplatform/* secrets&quot;]
+    end
+
+    User --&gt; R53 --&gt; ALB
+    ACM -.-&gt;|&quot;TLS&quot;| ALB
+    GH -.-&gt;|&quot;OAuth2 — all UIs&quot;| ALB
+
+    ALB --&gt;|&quot;/airflow&quot;| AF
+    ALB --&gt;|&quot;/mlflow&quot;| ML
+    ALB --&gt;|&quot;/jupyterhub&quot;| JH
+    ALB --&gt;|&quot;/grafana&quot;| GF
+    ALB --&gt;|&quot;/sagemaker&quot;| SD
+
+    AF --&gt;|&quot;metadata&quot;| RDS
+    AF --&gt;|&quot;data I/O&quot;| S3
+    AF --&gt;|&quot;tracking API&quot;| ML
+    AF --&gt;|&quot;task pods&quot;| ng1 &amp; ng2
+    ML --&gt;|&quot;metadata&quot;| RDS
+    ML --&gt;|&quot;artifacts&quot;| S3
+    JH --&gt;|&quot;notebooks&quot;| EFS
+    SD --&gt;|&quot;model files&quot;| S3
+    SD --&gt;|&quot;images&quot;| ECR
+    ESO --&gt;|&quot;GetSecretValue&quot;| SEC
+    ESO -.-&gt;|&quot;inject secrets&quot;| AF &amp; ML &amp; JH
+    GF --&gt;|&quot;PromQL&quot;| PROM
+    PROM -.-&gt;|&quot;scrapes /metrics&quot;| AF &amp; ML &amp; JH
+    CA --&gt;|&quot;autoscales&quot;| ng0 &amp; ng1 &amp; ng2
+</pre>
+    </div>
+  </div>
+  <div class="panel" id="panel-training">
+    <h2>ML Training Pipeline</h2>
+    <p class="subtitle">Step-by-step flow when a data scientist triggers an Airflow training DAG — from code sync to model artifacts stored in S3.</p>
+    <div class="diagram-box">
+      <pre class="mermaid" id="mermaid-training">sequenceDiagram
+    actor DS as Data Scientist
+    participant AW as Airflow Webserver
+    participant GS as git-sync sidecar
+    participant GH as GitHub DAG Repo
+    participant SCH as Airflow Scheduler
+    participant POD as Task Pod  (ng1 / ng2)
+    participant MLF as MLflow Server
+    participant RDS_PG as RDS PostgreSQL
+    participant RDS_MY as RDS MySQL
+    participant S3 as S3: mlflow-artifacts
+
+    loop Every 60 seconds
+        GS-&gt;&gt;GH: git pull
+        GH--&gt;&gt;GS: Latest DAG code
+    end
+
+    DS-&gt;&gt;AW: Trigger DAG run via Airflow UI
+    AW-&gt;&gt;SCH: RPC — schedule DAG execution
+    SCH-&gt;&gt;RDS_PG: Write dag_run record  (Airflow metadata DB)
+
+    SCH-&gt;&gt;POD: KubernetesExecutor — spawn task pod on ng1 or ng2
+
+    Note over POD: Training code executes inside pod
+
+    POD-&gt;&gt;MLF: mlflow.start_run()
+    POD-&gt;&gt;MLF: log_metric() / log_param() / log_model()
+    MLF-&gt;&gt;RDS_MY: Persist run metadata
+    MLF-&gt;&gt;S3: Upload model artifacts
+
+    POD--&gt;&gt;SCH: Task complete  (exit 0)
+    SCH-&gt;&gt;RDS_PG: Update task instance state to SUCCESS
+
+    DS-&gt;&gt;AW: View DAG run status
+    DS-&gt;&gt;MLF: Compare experiment runs in MLflow UI
+</pre>
+    </div>
+  </div>
+  <div class="panel" id="panel-deployment">
+    <h2>Model Deployment Flow</h2>
+    <p class="subtitle">How a trained model moves from the MLflow Registry through the SageMaker Dashboard to a live inference endpoint.</p>
+    <div class="diagram-box">
+      <pre class="mermaid" id="mermaid-deployment">flowchart LR
+    subgraph step1 [&quot; 1 — Track &amp; Register &quot;]
+        direction TB
+        EXP[&quot;MLflow Experiment
+Run logged during training&quot;]
+        REG[&quot;MLflow Registry
+Model version registered&quot;]
+        EXP --&gt;|&quot;promote best run&quot;| REG
+    end
+
+    subgraph step2 [&quot; 2 — Build Container &quot;]
+        direction TB
+        DASH[&quot;SageMaker Dashboard
+Select model from Registry&quot;]
+        S3[&quot;S3: mlflow-artifacts
+Model files &amp; weights&quot;]
+        BUILD[&quot;Build serving container
+from model + base image&quot;]
+        ECR[&quot;ECR
+Push container image&quot;]
+        DASH --&gt;|&quot;read artifacts&quot;| S3
+        S3 --&gt; BUILD
+        BUILD --&gt; ECR
+    end
+
+    subgraph step3 [&quot; 3 — Deploy Endpoint &quot;]
+        direction TB
+        ENDPT[&quot;SageMaker Endpoint
+Real-time inference&quot;]
+        SCALE[&quot;Auto Scaling policy
+Target tracking&quot;]
+        ENDPT --&gt; SCALE
+    end
+
+    subgraph step4 [&quot; 4 — Consume &quot;]
+        direction TB
+        APP[&quot;Application
+or API consumer&quot;]
+        CW[&quot;CloudWatch
+Latency &amp; invocation metrics&quot;]
+    end
+
+    REG --&gt;|&quot;select version&quot;| DASH
+    ECR --&gt;|&quot;deploy image&quot;| ENDPT
+    ENDPT --&gt;|&quot;REST predictions&quot;| APP
+    ENDPT --&gt;|&quot;metrics&quot;| CW
+</pre>
+    </div>
+  </div>
+  <div class="panel" id="panel-notebook">
+    <h2>Notebook Session — User Journey</h2>
+    <p class="subtitle">Complete flow from login through GitHub OAuth to an active JupyterHub notebook with persistent EFS storage and MLflow experiment tracking.</p>
+    <div class="diagram-box">
+      <pre class="mermaid" id="mermaid-notebook">sequenceDiagram
+    actor DS as Data Scientist
+    participant ALB as ALB  /jupyterhub
+    participant GH as GitHub OAuth
+    participant HUB as JupyterHub Hub
+    participant POD as Notebook Pod  (ng1)
+    participant EFS as EFS Volume
+    participant MLF as MLflow Server
+    participant S3 as S3: mlflow-artifacts
+
+    DS-&gt;&gt;ALB: GET /jupyterhub
+    ALB-&gt;&gt;GH: Redirect to GitHub for authorization
+    GH--&gt;&gt;DS: Authorization prompt
+    DS-&gt;&gt;GH: Authorize application
+    GH--&gt;&gt;ALB: OAuth callback with token
+    ALB-&gt;&gt;HUB: Authenticated request
+
+    alt First login
+        HUB-&gt;&gt;POD: Spawn jupyter-username pod on ng1
+        POD-&gt;&gt;EFS: Mount /home/username  (ReadWriteMany)
+        Note over POD,EFS: Home directory persists across sessions
+    else Returning user
+        HUB-&gt;&gt;POD: Start existing user server
+        POD-&gt;&gt;EFS: Re-mount home directory
+    end
+
+    HUB--&gt;&gt;DS: Notebook interface ready
+
+    DS-&gt;&gt;POD: Open notebook — run cells
+    POD-&gt;&gt;MLF: mlflow.set_experiment(&quot;my-experiment&quot;)
+    POD-&gt;&gt;MLF: mlflow.start_run()
+
+    loop Training loop
+        POD-&gt;&gt;MLF: log_metric(&quot;loss&quot;, value, step)
+    end
+
+    POD-&gt;&gt;MLF: log_model(model, &quot;model&quot;)
+    MLF-&gt;&gt;S3: Upload model artifacts
+    MLF--&gt;&gt;POD: run_id returned
+
+    DS-&gt;&gt;MLF: View run in MLflow UI at /mlflow
+</pre>
+    </div>
+  </div>
+  <div class="panel" id="panel-observability">
+    <h2>Observability & Alerting Stack</h2>
+    <p class="subtitle">How Prometheus collects metrics from every platform component every 30s, and how Grafana surfaces dashboards and fires alerts.</p>
+    <div class="diagram-box">
+      <pre class="mermaid" id="mermaid-observability">flowchart TD
+    subgraph sources [&quot; Metrics Sources — scraped every 30 seconds &quot;]
+        AF[&quot;Airflow Webserver
+/metrics  (StatsD exporter)&quot;]
+        ML[&quot;MLflow Server
+/metrics&quot;]
+        JH[&quot;JupyterHub Hub
+/metrics&quot;]
+        NE0[&quot;node-exporter on ng0
+CPU / memory / disk / network&quot;]
+        NE1[&quot;node-exporter on ng1
+CPU / memory / disk / network&quot;]
+        KSM[&quot;kube-state-metrics
+Pod and deployment state&quot;]
+    end
+
+    PROM[&quot;Prometheus
+Time series database
+15-day retention on EBS&quot;]
+
+    AF --&gt;|&quot;pull&quot;| PROM
+    ML --&gt;|&quot;pull&quot;| PROM
+    JH --&gt;|&quot;pull&quot;| PROM
+    NE0 --&gt;|&quot;node stats&quot;| PROM
+    NE1 --&gt;|&quot;node stats&quot;| PROM
+    KSM --&gt;|&quot;k8s objects&quot;| PROM
+
+    subgraph grafana [&quot; Grafana Dashboards  —  /grafana  (GitHub OAuth gated) &quot;]
+        D1[&quot;Dashboard #2
+Kubernetes Cluster Overview&quot;]
+        D2[&quot;Dashboard #315
+Node Exporter Full&quot;]
+        D3[&quot;Dashboard #6417
+Kubernetes Pod Resources&quot;]
+    end
+
+    PROM --&gt;|&quot;PromQL&quot;| D1 &amp; D2 &amp; D3
+
+    ALERTS[&quot;Alert Rules
+Threshold-based in Grafana&quot;]
+    NOTIFY[&quot;Notification Channels
+Email / Slack / PagerDuty&quot;]
+
+    PROM --&gt; ALERTS
+    ALERTS --&gt;|&quot;threshold breached&quot;| NOTIFY
+
+    User([&quot;User via /grafana&quot;]) --&gt;|&quot;views&quot;| D1 &amp; D2 &amp; D3
+</pre>
+    </div>
+  </div>
+  <div class="panel" id="panel-secrets">
+    <h2>Secret Management — ESO + IRSA</h2>
+    <p class="subtitle">How the External Secrets Operator uses IRSA to fetch secrets from AWS Secrets Manager and inject them into Airflow, MLflow, and JupyterHub pods.</p>
+    <div class="diagram-box">
+      <pre class="mermaid" id="mermaid-secrets">sequenceDiagram
+    participant TF as Terraform
+    participant SM as AWS Secrets Manager
+    participant OIDC as EKS OIDC Provider
+    participant ESO as External Secrets Operator
+    participant IAM as IRSA Role: iam_eso
+    participant K8S as Kubernetes Secrets API
+    participant AF as Airflow Pod
+    participant ML as MLflow Pod
+    participant JH as JupyterHub Pod
+
+    TF-&gt;&gt;SM: Provision secrets under mlplatform/*
+    Note over TF,SM: DB passwords, OAuth secrets, API keys
+
+    Note over ESO: ESO pod starts with K8s ServiceAccount
+    Note over ESO: annotated with iam_eso IAM role ARN
+
+    ESO-&gt;&gt;OIDC: Request IRSA token for ServiceAccount
+    OIDC--&gt;&gt;ESO: Signed JWT  (proof of pod identity)
+    ESO-&gt;&gt;IAM: AssumeRoleWithWebIdentity  (present JWT)
+    IAM--&gt;&gt;ESO: Temporary AWS credentials
+
+    ESO-&gt;&gt;SM: GetSecretValue  mlplatform/airflow
+    ESO-&gt;&gt;SM: GetSecretValue  mlplatform/mlflow
+    ESO-&gt;&gt;SM: GetSecretValue  mlplatform/jupyterhub
+    SM--&gt;&gt;ESO: Secret values  (DB URLs, tokens, keys)
+
+    ESO-&gt;&gt;K8S: Create / update Kubernetes Secret objects
+    Note over ESO,K8S: One Secret per namespace
+
+    AF-&gt;&gt;K8S: Mount as env var — DB_PASSWORD, FERNET_KEY
+    ML-&gt;&gt;K8S: Mount as env var — MLFLOW_TRACKING_TOKEN
+    JH-&gt;&gt;K8S: Mount as env var — GITHUB_CLIENT_SECRET
+
+    Note over ESO,SM: Auto-rotation: ESO polls every 1h
+    Note over ESO,SM: Re-syncs K8s Secrets on AWS value change
+</pre>
+    </div>
+  </div>
+  <div class="panel" id="panel-network">
+    <h2>Network Topology & IRSA Identity Chain</h2>
+    <p class="subtitle">VPC layout across 3 AZs, EKS node placement in private subnets, and the OIDC-based IRSA chain that gives each pod fine-grained AWS IAM access.</p>
+    <div class="diagram-box">
+      <pre class="mermaid" id="mermaid-network">flowchart TD
+    Internet([&quot;Internet&quot;])
+
+    subgraph vpc [&quot; VPC  10.0.0.0/16 &quot;]
+        subgraph pub [&quot; Public Subnets  —  3 AZs &quot;]
+            IGW[&quot;Internet Gateway&quot;]
+            NAT[&quot;NAT Gateway  (AZ1)
+Shared egress for all nodes&quot;]
+            ALBN[&quot;ALB Nodes
+internet-facing&quot;]
+        end
+
+        subgraph priv [&quot; Private Subnets  —  3 AZs &quot;]
+            EKS[&quot;EKS Control Plane
+Private API endpoint only&quot;]
+            ng0[&quot;ng0  t3.small  0-5 nodes&quot;]
+            ng1[&quot;ng1  t3.medium  4-6 nodes&quot;]
+            ng2[&quot;ng2  t3.large  0-3 nodes&quot;]
+        end
+
+        subgraph db [&quot; DB Subnets  —  isolated, no public route &quot;]
+            PG[&quot;RDS PostgreSQL
+port 5000  —  Airflow metadata&quot;]
+            MY[&quot;RDS MySQL
+port 5432  —  MLflow backend&quot;]
+            EFS[&quot;EFS Mount Targets
+ReadWriteMany  —  notebooks&quot;]
+        end
+    end
+
+    subgraph dns [&quot; DNS &amp; TLS &quot;]
+        R53[&quot;Route 53
+Hosted zone&quot;]
+        ACM[&quot;ACM Certificate
+Wildcard TLS&quot;]
+    end
+
+    subgraph irsa [&quot; AWS Identity  —  IRSA chain &quot;]
+        OIDC[&quot;EKS OIDC Provider
+Federation hub&quot;]
+        IAM_AF[&quot;IRSA: Airflow
+S3 airflow prefix read/write&quot;]
+        IAM_ML[&quot;IRSA: MLflow
+S3 mlflow prefix read/write&quot;]
+        IAM_SM[&quot;IRSA: SageMaker
+SageMaker + ECR + S3&quot;]
+        IAM_ESO[&quot;IRSA: ESO
+Secrets Manager GetSecretValue&quot;]
+        IAM_DNS[&quot;IRSA: ExternalDNS
+Route53 ChangeResourceRecordSets&quot;]
+    end
+
+    Internet --&gt; IGW --&gt; ALBN
+    NAT --&gt;|&quot;outbound only&quot;| Internet
+    ng0 &amp; ng1 &amp; ng2 --&gt;|&quot;egress via&quot;| NAT
+
+    R53 --&gt;|&quot;A record&quot;| ALBN
+    ACM -.-&gt;|&quot;TLS cert&quot;| ALBN
+
+    EKS --&gt;|&quot;manages&quot;| ng0 &amp; ng1 &amp; ng2
+    EKS --&gt;|&quot;issues tokens via&quot;| OIDC
+
+    OIDC --&gt; IAM_AF
+    OIDC --&gt; IAM_ML
+    OIDC --&gt; IAM_SM
+    OIDC --&gt; IAM_ESO
+    OIDC --&gt; IAM_DNS
+</pre>
+    </div>
+  </div>
+</main>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: "dark",
+    themeVariables: {
+      darkMode: true,
+      background:         "#161b22",
+      primaryColor:       "#1f3a5f",
+      primaryTextColor:   "#e6edf3",
+      primaryBorderColor: "#388bfd",
+      lineColor:          "#58a6ff",
+      secondaryColor:     "#21262d",
+      tertiaryColor:      "#0d1117",
+      edgeLabelBackground:"#21262d",
+      clusterBkg:         "#161b22",
+      clusterBorder:      "#30363d",
+      titleColor:         "#e6edf3",
+      fontFamily:         '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
+      fontSize:           "14px",
+      actorBkg:           "#1f3a5f",
+      actorBorder:        "#388bfd",
+      actorTextColor:     "#e6edf3",
+      activationBkgColor: "#21262d",
+      noteBkgColor:       "#21262d",
+      noteTextColor:      "#c9d1d9",
+      labelBoxBkgColor:   "#21262d",
+      sequenceNumberColor:"#e6edf3",
+    },
+    flowchart: { curve: "basis", padding: 24, htmlLabels: true },
+    sequence: { actorMargin: 80, useMaxWidth: false, mirrorActors: false },
+  });
+
+  const DIAGRAM_IDS = ["overview", "training", "deployment", "notebook", "observability", "secrets", "network"];
+  const rendered    = new Set();
+
+  async function renderDiagram(id) {
+    if (rendered.has(id)) return;
+    const pre = document.getElementById("mermaid-" + id);
+    const box = pre.closest(".diagram-box");
+    if (!pre || !box) return;
+
+    try {
+      const { svg } = await mermaid.render("svg-" + id, pre.textContent.trim());
+      // Replace <pre> with rendered SVG
+      const wrapper = document.createElement("div");
+      wrapper.innerHTML = svg;
+      box.replaceChildren(wrapper);
+      rendered.add(id);
+    } catch (err) {
+      const msg = document.createElement("pre");
+      msg.className = "diagram-error";
+      msg.textContent = "Diagram error: " + err.message;
+      box.replaceChildren(msg);
+    }
+  }
+
+  function showTab(id) {
+    document.querySelectorAll(".panel").forEach(p  => p.classList.remove("active"));
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    document.getElementById("panel-" + id).classList.add("active");
+    document.getElementById("btn-"   + id).classList.add("active");
+    renderDiagram(id);
+  }
+
+  // Render the first tab on load
+  document.addEventListener("DOMContentLoaded", () => renderDiagram("overview"));
+</script>
+
+</body>
+</html>
