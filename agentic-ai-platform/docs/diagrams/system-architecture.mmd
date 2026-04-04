@@ -1,0 +1,99 @@
+graph TB
+    subgraph Internet["Users / API Clients"]
+        DEV[Developer]
+        TEAM[Tenant Teams]
+        CLIENT[API Clients]
+    end
+
+    subgraph AWS_Edge["AWS Edge"]
+        R53[Route 53]
+        WAF[AWS WAF]
+        ALB["ALB\ngroup: agenticplatform"]
+    end
+
+    subgraph EKS["EKS Cluster: agenticplatform-eks"]
+        subgraph dev_ns["ns: agent-dev"]
+            VSCODE[Code-Server\nVS Code in Browser]
+            JUPYTER[JupyterHub\nAgent Notebooks]
+        end
+        subgraph gateway_ns["ns: llm-gateway"]
+            LITELLM[LiteLLM Proxy\nModel Router + Rate Limiter]
+        end
+        subgraph registry_ns["ns: agent-registry"]
+            AGENT_API[Agent Registry API\nFastAPI]
+            TOOL_API[Tool Registry API\nFastAPI]
+        end
+        subgraph orch_ns["ns: orchestration"]
+            LANGGRAPH[LangGraph Server\nAgent Graph Engine]
+            TEMPORAL[Temporal Server\nDurable Workflows]
+            TWORKER[Temporal Workers\nAutoscaled Pool]
+        end
+        subgraph mem_ns["ns: memory"]
+            MEM_SVC[Memory Service\nFastAPI]
+        end
+        subgraph tool_ns["ns: tool-registry"]
+            MCP[MCP Server\nTool Executor]
+        end
+        subgraph eval_ns["ns: evaluation"]
+            EVAL[Evaluation Service\nFastAPI]
+        end
+        subgraph hitl_ns["ns: hitl"]
+            HITL[HITL Service\nFastAPI + React UI]
+        end
+        subgraph obs_ns["ns: monitoring"]
+            LANGFUSE[Langfuse\nLLMOps Tracing]
+            PROM[Prometheus]
+            GRAFANA[Grafana]
+            OTEL[OTel Collector\nDaemonSet]
+        end
+        subgraph sec_ns["ns: security"]
+            PRESIDIO[Presidio\nPII Detection]
+            OPA[OPA\nPolicy Engine]
+        end
+        subgraph dash_ns["ns: dashboard"]
+            DASH[Platform Dashboard\nReact]
+        end
+    end
+
+    subgraph AWS_Inference["AWS Managed Inference"]
+        BEDROCK[AWS Bedrock\nClaude · Llama · Titan]
+        GUARDRAILS[Bedrock Guardrails\nPII + Content Filter]
+    end
+
+    subgraph AWS_Storage["AWS Storage"]
+        S3_ART[S3: Agent Artifacts]
+        S3_TRACE[S3: Trace Archives]
+        EFS[EFS: Memory Snapshots]
+    end
+
+    subgraph AWS_DB["AWS Databases"]
+        RDS[RDS Aurora PostgreSQL\nRegistry + Langfuse]
+        DYNAMO[DynamoDB\nAgent State + Episodic Memory]
+        OPENSEARCH[OpenSearch Serverless\nVector Memory]
+        REDIS[ElastiCache Redis\nWorking Memory + Rate Limits]
+    end
+
+    subgraph AWS_Msg["AWS Messaging"]
+        SQS[SQS: Approval Queue]
+        SNS[SNS: Notifications]
+        EB[EventBridge\nAgent Event Bus]
+    end
+
+    DEV & TEAM & CLIENT --> R53 --> WAF --> ALB
+    ALB --> VSCODE & JUPYTER & LITELLM & AGENT_API & TOOL_API
+    ALB --> LANGFUSE & GRAFANA & HITL & DASH
+
+    LANGGRAPH --> LITELLM --> GUARDRAILS --> BEDROCK
+    LANGGRAPH --> MEM_SVC & MCP & HITL
+    TWORKER --> LANGGRAPH
+    TEMPORAL --> TWORKER
+
+    MEM_SVC --> OPENSEARCH & REDIS & DYNAMO & EFS
+    AGENT_API --> RDS & S3_ART
+    TOOL_API --> RDS
+    MCP --> TOOL_API
+
+    LANGFUSE --> RDS & S3_TRACE
+    OTEL --> LANGFUSE & PROM --> GRAFANA
+    HITL --> SQS --> SNS
+    TWORKER --> EB
