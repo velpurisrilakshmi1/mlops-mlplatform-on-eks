@@ -20,8 +20,10 @@ sequenceDiagram
     participant Guardrails as Bedrock Guardrails
     participant Bedrock
     participant MCP as MCP Server
+    participant OPA
     participant Lambda as Tool Lambda
     participant DynamoDB
+    participant OpenSearch
 
     User->>WAF: POST /orchestration/v1/runs\n{assistant_id: "search-agent", input: "What is X?"}
     WAF->>ALB: Request passes OWASP + injection check
@@ -89,6 +91,8 @@ sequenceDiagram
     participant DynamoDB
     participant SQS
     participant SNS
+    participant Lambda
+    participant Slack
     participant Temporal
 
     User->>LangGraph: POST /orchestration/v1/runs\n{assistant_id: "outreach-agent"}
@@ -140,6 +144,7 @@ sequenceDiagram
     participant LangGraph as LangGraph Server\n(local/dev)
     participant LiteLLM as LiteLLM Proxy
     participant Langfuse
+    participant EvalSvc as Evaluation Service
     participant Registry as Agent Registry API
     participant DynamoDB
     participant S3

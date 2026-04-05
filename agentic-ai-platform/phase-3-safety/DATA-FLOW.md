@@ -25,7 +25,7 @@ sequenceDiagram
         GW->>IG: Check input
         IG->>IG: PII scan → found: email, person name
         IG->>IG: Prompt injection scan → clean
-        IG->>IG: Redact PII → "Find <PERSON_1>'s salary at <EMAIL_1>"
+        IG->>IG: Redact PII → Find [PERSON_1] salary at [EMAIL_1]
         IG->>Audit: Log: pii_detected {email: 1, person: 1}
     end
 
@@ -61,7 +61,7 @@ sequenceDiagram
 
     rect rgb(255, 240, 230)
         Note over Agent,OG: Layer 5 — Output Safety
-        Agent->>OG: Response: "<PERSON_1>'s salary is $150,000"
+        Agent->>OG: Response: [PERSON_1] salary is $150,000
         OG->>OG: Content safety → clean
         OG->>OG: PII check → salary amount (sensitive but allowed per policy)
         OG->>Audit: Log: output_checked {clean: true}

@@ -12,7 +12,7 @@ sequenceDiagram
     participant UI as Chat UI
     participant Ingress as NGINX Ingress
     participant API as Agent API (FastAPI)
-    participant Loop as Agent Loop
+    participant ALoop as Agent Loop
     participant LLM as LLM Provider
     participant Tools as Tool Router
     participant Search as Web Search API
@@ -21,26 +21,26 @@ sequenceDiagram
     UI->>Ingress: POST /api/v1/agent/run
     Ingress->>API: Route to agent service
     API->>API: Validate request, create session
-    API->>Loop: Start agent reasoning
+    API->>ALoop: Start agent reasoning
 
     rect rgb(240, 248, 255)
-        Note over Loop,LLM: Iteration 1 — Agent decides to use a tool
-        Loop->>LLM: Send messages + tool schemas
-        LLM-->>Loop: tool_call: web_search("weather NYC")
-        Loop->>Tools: Execute web_search
+        Note over ALoop,LLM: Iteration 1 — Agent decides to use a tool
+        ALoop->>LLM: Send messages + tool schemas
+        LLM-->>ALoop: tool_call: web_search("weather NYC")
+        ALoop->>Tools: Execute web_search
         Tools->>Search: HTTP GET search API
         Search-->>Tools: Search results JSON
-        Tools-->>Loop: "NYC: 72°F, partly cloudy"
-        Loop->>Loop: Append tool result to messages
+        Tools-->>ALoop: "NYC: 72°F, partly cloudy"
+        ALoop->>ALoop: Append tool result to messages
     end
 
     rect rgb(240, 255, 240)
-        Note over Loop,LLM: Iteration 2 — Agent provides final answer
-        Loop->>LLM: Send updated messages
-        LLM-->>Loop: final_answer: "The weather in NYC is 72°F..."
+        Note over ALoop,LLM: Iteration 2 — Agent provides final answer
+        ALoop->>LLM: Send updated messages
+        LLM-->>ALoop: final_answer: "The weather in NYC is 72°F..."
     end
 
-    Loop-->>API: Return answer + steps
+    ALoop-->>API: Return answer + steps
     API-->>Ingress: HTTP 200 JSON response
     Ingress-->>UI: Response
     UI-->>User: Display answer with reasoning steps
@@ -122,12 +122,12 @@ flowchart LR
 
 ```mermaid
 sequenceDiagram
-    participant Loop as Agent Loop
+    participant ALoop as Agent Loop
     participant Client as LLM Client
     participant LiteLLM as LiteLLM
     participant Provider as LLM Provider API
 
-    Loop->>Client: chat(messages, tools, model)
+    ALoop->>Client: chat(messages, tools, model)
     Client->>Client: Add default parameters<br/>(temperature, max_tokens)
 
     Client->>LiteLLM: completion(model, messages, tools)
@@ -138,7 +138,7 @@ sequenceDiagram
     LiteLLM-->>Client: Parsed response object
 
     Client->>Client: Extract content or tool_calls
-    Client-->>Loop: Structured response
+    Client-->>ALoop: Structured response
 
     Note over Client,Provider: On timeout → retry once
     Note over Client,Provider: On 429 → propagate rate limit error
